@@ -5,7 +5,7 @@ import express from 'express';
 dotenv.config();
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const BOT_URL = process.env.BOT_URL;
+const BOT_URL= 'https://customer-support-telegram-bot.vercel.app';
 
 
 // Validate token
@@ -155,6 +155,8 @@ bot.on('text', (ctx) => {
 // Set up Express to handle webhooks
 const app = express();
 app.use(express.json());
+
+
 
 // Set webhook
 bot.telegram.setWebhook(`${BOT_URL}/webhook`);
