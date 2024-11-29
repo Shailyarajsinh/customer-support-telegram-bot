@@ -134,6 +134,7 @@ bot.on('text', async (ctx) => {
     case 'awaiting_ton_hash':
       const tonHash = ctx.message.text;
       console.log('TON Hash:',tonHash);
+      console.log(`userName: ${ctx.from?.username}`); 
 
       if (!tonHashRegex.test(tonHash)) {
         await ctx.reply(
