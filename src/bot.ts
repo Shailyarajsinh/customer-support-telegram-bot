@@ -144,7 +144,7 @@ function createBot() {
 
         // Respond to the user
         await ctx.replyWithMarkdown(
-          `*TON transaction hash received.*\n\nWe have received your request regarding the TON transaction issue.\n\nOur team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
+          `*TON transaction hash received.* \n\n*${(ctx.from.first_name).toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue.\n\nOur team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
         );
         break;
 

@@ -9,8 +9,8 @@ const port = 3000;
 createBot();
 
 // Route to display "Bot is alive" on an HTML page
-app.get('/', (_, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../index.html'));
 });
 
 // Start the server
