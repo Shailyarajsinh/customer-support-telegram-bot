@@ -1,9 +1,12 @@
 import { Telegraf, Markup } from 'telegraf';
 import dotenv from 'dotenv';
+import axios from 'axios';
+import { cloudinary, UploadApiResponse } from './cloudinary';
+import { ImageModel } from './models/image.model';
+import { BOT_TOKEN } from './config';
+import { Buffer } from 'buffer';
 
 dotenv.config();
-
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Validate environment variables
 if (!BOT_TOKEN) {
@@ -23,12 +26,14 @@ function createBot() {
     .oneTime();
 
   // Store user states for step-by-step processes
-  const userState: Record<number, { step: string | null }> = {};
+  const userState: Record<number, {
+    photoUrls: any; step: string | null
+  }> = {};
 
   // Command: /start
   bot.start((ctx) => {
     // Reset the user's state
-    userState[ctx.chat.id] = { step: null };
+    userState[ctx.chat.id] = { photoUrls: [], step: null };
     ctx.reply(
       'Welcome to the Rats Kingdom Support Bot! Please choose an option:',
       mainMenu
@@ -76,7 +81,7 @@ function createBot() {
 
   // Command: "Profile Verification Issue"
   bot.hears('Profile Verification Issue', async (ctx) => {
-    userState[ctx.chat.id] = { step: 'awaiting_profile_screenshot' };
+    userState[ctx.chat.id] = { photoUrls: [], step: 'awaiting_profile_screenshot' };
     await ctx.reply(
       'Please upload a screenshot of your profile page showing the verification issue.'
     );
@@ -94,27 +99,94 @@ function createBot() {
       return;
     }
 
-    switch (state.step) {
-      case 'awaiting_profile_screenshot':
-        userState[userId].step = 'awaiting_ton_transaction_screenshot';
-        await ctx.reply(
-          'Profile screenshot received. Now, upload a screenshot of your TON transaction.'
-        );
-        break;
+    try {
+      const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
 
-      case 'awaiting_ton_transaction_screenshot':
-        userState[userId].step = 'awaiting_ton_hash';
-        await ctx.reply(
-          'TON transaction screenshot received. Please provide the TON transaction hash.'
-        );
-        break;
+      // Get file path
+      const userId = ctx.chat.id;
+      const userName = ctx.from?.username;
+      const state = userState[userId];
 
-      default:
+      if (!state || !state.step) {
         await ctx.reply(
-          'Unexpected step. Please restart the process by typing /start.'
+          'Please start a process first by selecting an option from the menu.'
         );
+        return;
+      }
+
+      // Download the image
+      const file = await ctx.telegram.getFile(fileId);
+      const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+      const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+      const imageBuffer = Buffer.from(response.data);
+
+      // Upload the image to Cloudinary
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { resource_type: 'auto', folder: 'Bot_Uploads' },
+        async (error: any, result: UploadApiResponse | undefined) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            await ctx.reply('Failed to upload image to Cloudinary.');
+            return;
+          }
+
+          if (!result) {
+            console.error('No result returned from Cloudinary');
+            await ctx.reply('Failed to upload image to Cloudinary.');
+            return;
+          }
+
+          // Save the image to MongoDB
+          let savedDocument;
+          switch (state.step) {
+            case 'awaiting_profile_screenshot':
+              savedDocument = await ImageModel.findOneAndUpdate(
+                { UserId: userId.toString() },
+                {
+                  UserId: userId.toString(),
+                  UserName: userName,
+                  Profile_Image: result.secure_url
+                },
+                { upsert: true, new: true } // Create new if not exists
+              );
+              userState[userId].step = 'awaiting_ton_transaction_screenshot';
+              await ctx.reply(
+                'Profile screenshot received. Now, upload a screenshot of your TON transaction.'
+              );
+              break;
+
+            case 'awaiting_ton_transaction_screenshot':
+              savedDocument = await ImageModel.findOneAndUpdate(
+                { UserId: userId.toString() },
+                {
+                  TonTransactionImage: result.secure_url
+                },
+                { new: true } // Update only
+              );
+              userState[userId].step = 'awaiting_ton_hash';
+              await ctx.reply(
+                'TON transaction screenshot received. Please provide the TON transaction hash.'
+              );
+              break;
+
+            default:
+              await ctx.reply(
+                'Unexpected step. Please restart the process by typing /start.'
+              );
+          }
+
+          console.log('Updated document:', savedDocument);
+        }
+      );
+
+      uploadStream.end(imageBuffer);
+    } catch (error) {
+      console.error('Error handling photo:', error);
+      await ctx.reply('Failed to save the image.');
     }
   });
+
+
 
   // Handle Text Inputs (TON hash and Telegram User ID)
   bot.on('text', async (ctx) => {
@@ -131,6 +203,19 @@ function createBot() {
 
     switch (state.step) {
       case 'awaiting_ton_hash':
+
+        //update the  TON hash in the database
+
+        const savedDocument = await ImageModel.findOneAndUpdate(
+          { UserId: userId.toString() },
+          {
+            TonTransactionHash: ctx.message.text
+          },
+          { new: true } // Update only
+        );
+
+        console.log('Updated document:', savedDocument);
+
         const tonHash = ctx.message.text;
         console.log('TON Hash:', tonHash);
         console.log(`userName: ${ctx.from?.username}`);
@@ -155,7 +240,7 @@ function createBot() {
 
   // Command: /cancel
   bot.command('cancel', (ctx) => {
-    userState[ctx.chat.id] = { step: null }; // Reset user state
+    userState[ctx.chat.id] = { photoUrls: [], step: null }; // Reset user state
     ctx.reply('Process canceled. You can start over by typing /start.', mainMenu);
   });
 
