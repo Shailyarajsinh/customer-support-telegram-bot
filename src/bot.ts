@@ -1,16 +1,16 @@
-import { Telegraf, Markup } from 'telegraf';
-import dotenv from 'dotenv';
-import axios from 'axios';
-import { cloudinary, UploadApiResponse } from './cloudinary';
-import { ImageModel } from './models/image.model';
-import { BOT_TOKEN } from './config';
-import { Buffer } from 'buffer';
+import { Telegraf, Markup } from "telegraf";
+import dotenv from "dotenv";
+import axios from "axios";
+import { cloudinary, UploadApiResponse } from "./cloudinary";
+import { ImageModel } from "./models/image.model";
+import { BOT_TOKEN } from "./config";
+import { Buffer } from "buffer";
 
 dotenv.config();
 
 // Validate environment variables
 if (!BOT_TOKEN) {
-  throw new Error('Telegram Bot Token is missing. Add it to the .env file.');
+  throw new Error("Telegram Bot Token is missing. Add it to the .env file.");
 }
 
 function createBot() {
@@ -19,29 +19,34 @@ function createBot() {
 
   // Define the main menu options
   const mainMenu = Markup.keyboard([
-    ['Rats Kingdom - Introduction', '🤌 Get My referal link'],
-    ['Profile Verification Issue', 'Updates'],
+    ["Rats Kingdom - Introduction", "🤌 Get My referal link"],
+    ["Profile Verification Issue", "Updates"],
+    ["feedback", "📞 Contact Support"],
   ])
     .resize()
     .oneTime();
 
   // Store user states for step-by-step processes
-  const userState: Record<number, {
-    photoUrls: any; step: string | null
-  }> = {};
+  const userState: Record<
+    number,
+    {
+      photoUrls: any;
+      step: string | null;
+    }
+  > = {};
 
   // Command: /start
   bot.start((ctx) => {
     // Reset the user's state
     userState[ctx.chat.id] = { photoUrls: [], step: null };
     ctx.reply(
-      'Welcome to the Rats Kingdom Support Bot! Please choose an option:',
+      "Welcome to the Rats Kingdom Support Bot! Please choose an option:",
       mainMenu
     );
   });
 
   // Command: Updates
-  bot.hears('Updates', async (ctx) => {
+  bot.hears("Updates", async (ctx) => {
     const message = `🚨 FINAL & BIGGEST CHANCE: Earn 1,00,000 $RATS by Inviting 5 Friends! 🚨
     
   As we’ve reached an incredible 8 Million user milestone, it’s time for the biggest opportunity yet for everyone! Many of you have been requesting another chance to earn more $RATS, especially those who missed our first "Invite 5 Friends" task. 
@@ -55,7 +60,7 @@ function createBot() {
   });
 
   // Command: Rats Kingdom Introduction
-  bot.hears('Rats Kingdom - Introduction', async (ctx) => {
+  bot.hears("Rats Kingdom - Introduction", async (ctx) => {
     ctx.replyWithMarkdown(`
   *Rats Kingdom - Introduction*
   
@@ -66,35 +71,54 @@ function createBot() {
   });
 
   // Command: Get My Referral Link
-  bot.hears('🤌 Get My referal link', async (ctx) => {
+  bot.hears("🤌 Get My referal link", async (ctx) => {
     const chatId = ctx.chat?.id;
     if (!chatId) {
-      return ctx.reply('Could not retrieve your referral link. Please try again.');
+      return ctx.reply(
+        "Could not retrieve your referral link. Please try again."
+      );
     }
 
     // Generate the referral link dynamically using the chat ID
     const referralLink = `http://t.me/RatsKingdom_Bot/join?startapp=${chatId}`;
 
     // Send the referral link to the user
-    await ctx.replyWithMarkdown(`🤝 *Your Referral Link:* \n\n [${referralLink}] `);
+    await ctx.replyWithMarkdown(
+      `🤝 *Your Referral Link:* \n\n [${referralLink}] `
+    );
+  });
+
+  // Command: Contact Support
+  bot.hears("📞 Contact Support", async (ctx) => {
+    ctx.reply(
+      `
+      Please contact our support team at\n
+      📧 Email: xyz@gmail.com\n
+      📞 Phone: XXX-XXX-XXXX \n
+      🌐 Website: WWW.ABC.COM\n
+      `
+    );
   });
 
   // Command: "Profile Verification Issue"
-  bot.hears('Profile Verification Issue', async (ctx) => {
-    userState[ctx.chat.id] = { photoUrls: [], step: 'awaiting_profile_screenshot' };
+  bot.hears("Profile Verification Issue", async (ctx) => {
+    userState[ctx.chat.id] = {
+      photoUrls: [],
+      step: "awaiting_profile_screenshot",
+    };
     await ctx.reply(
-      'Please upload a screenshot of your profile page showing the verification issue.'
+      "Please upload a screenshot of your profile page showing the verification issue."
     );
   });
 
   // Handler: Photo Uploads
-  bot.on('photo', async (ctx) => {
+  bot.on("photo", async (ctx) => {
     const userId = ctx.chat.id;
     const state = userState[userId];
 
     if (!state || !state.step) {
       await ctx.reply(
-        'Please start a process first by selecting an option from the menu.'
+        "Please start a process first by selecting an option from the menu."
       );
       return;
     }
@@ -109,7 +133,7 @@ function createBot() {
 
       if (!state || !state.step) {
         await ctx.reply(
-          'Please start a process first by selecting an option from the menu.'
+          "Please start a process first by selecting an option from the menu."
         );
         return;
       }
@@ -117,145 +141,181 @@ function createBot() {
       // Download the image
       const file = await ctx.telegram.getFile(fileId);
       const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
-      const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+      const response = await axios.get(fileUrl, {
+        responseType: "arraybuffer",
+      });
       const imageBuffer = Buffer.from(response.data);
 
       // Upload the image to Cloudinary
       const uploadStream = cloudinary.uploader.upload_stream(
-        { resource_type: 'auto', folder: 'Bot_Uploads' },
+        { resource_type: "auto", folder: "Bot_Uploads" },
         async (error: any, result: UploadApiResponse | undefined) => {
           if (error) {
-            console.error('Cloudinary upload error:', error);
-            await ctx.reply('Failed to upload image to Cloudinary.');
+            console.error("Cloudinary upload error:", error);
+            await ctx.reply("Failed to upload image to Cloudinary.");
             return;
           }
 
           if (!result) {
-            console.error('No result returned from Cloudinary');
-            await ctx.reply('Failed to upload image to Cloudinary.');
+            console.error("No result returned from Cloudinary");
+            await ctx.reply("Failed to upload image to Cloudinary.");
             return;
           }
 
           // Save the image to MongoDB
           let savedDocument;
           switch (state.step) {
-            case 'awaiting_profile_screenshot':
+            case "awaiting_profile_screenshot":
               savedDocument = await ImageModel.findOneAndUpdate(
                 { UserId: userId.toString() },
                 {
                   UserId: userId.toString(),
                   UserName: userName,
-                  Profile_Image: result.secure_url
+                  Profile_Image: result.secure_url,
                 },
                 { upsert: true, new: true } // Create new if not exists
               );
-              userState[userId].step = 'awaiting_ton_transaction_screenshot';
+              userState[userId].step = "awaiting_ton_transaction_screenshot";
               await ctx.reply(
-                'Profile screenshot received. Now, upload a screenshot of your TON transaction.'
+                "Profile screenshot received. Now, upload a screenshot of your TON transaction."
               );
               break;
 
-            case 'awaiting_ton_transaction_screenshot':
+            case "awaiting_ton_transaction_screenshot":
               savedDocument = await ImageModel.findOneAndUpdate(
                 { UserId: userId.toString() },
                 {
-                  TonTransactionImage: result.secure_url
+                  TonTransactionImage: result.secure_url,
                 },
                 { new: true } // Update only
               );
-              userState[userId].step = 'awaiting_ton_hash';
+              userState[userId].step = "awaiting_ton_hash";
               await ctx.reply(
-                'TON transaction screenshot received. Please provide the TON transaction hash.'
+                "TON transaction screenshot received. Please provide the TON transaction hash."
               );
               break;
 
             default:
               await ctx.reply(
-                'Unexpected step. Please restart the process by typing /start.'
+                "Unexpected step. Please restart the process by typing /start."
               );
           }
 
-          console.log('Updated document:', savedDocument);
+          console.log("Updated document:", savedDocument);
         }
       );
 
       uploadStream.end(imageBuffer);
     } catch (error) {
-      console.error('Error handling photo:', error);
-      await ctx.reply('Failed to save the image.');
+      console.error("Error handling photo:", error);
+      await ctx.reply("Failed to save the image.");
     }
   });
 
+// Unified Text Handler
+bot.on("text", async (ctx) => {
+  const userId = ctx.chat.id;
+  const state = userState[userId];
 
-
-  // Handle Text Inputs (TON hash and Telegram User ID)
-  bot.on('text', async (ctx) => {
-    const userId = ctx.chat.id;
-    const state = userState[userId];
-
-    if (!state || !state.step) {
-      ctx.reply('Please use the menu options or type /start to begin.');
-      return;
-    }
-
-    // Validate the TON hash
-    const tonHashRegex = /^\d+:[0-9a-fA-F]+$/;
-
-    switch (state.step) {
-      case 'awaiting_ton_hash':
-
-        //update the  TON hash in the database
-
-        const savedDocument = await ImageModel.findOneAndUpdate(
-          { UserId: userId.toString() },
-          {
-            TonTransactionHash: ctx.message.text
-          },
-          { new: true } // Update only
-        );
-
-        console.log('Updated document:', savedDocument);
-
-        const tonHash = ctx.message.text;
-        console.log('TON Hash:', tonHash);
-        console.log(`userName: ${ctx.from?.username}`);
-
-        if (!tonHashRegex.test(tonHash)) {
-          await ctx.reply(
-            'Invalid TON transaction hash. Please ensure it is a 64-character hexadecimal string.'
-          );
-          return;
-        }
-
-        // Respond to the user
-        await ctx.replyWithMarkdown(
-          `*TON transaction hash received.* \n\n*${(ctx.from.first_name).toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue.\n\nOur team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
+  if (!state || !state.step) {
+    // Handle specific keywords outside the process
+    switch (ctx.message.text.toLowerCase()) {
+      case "feedback":
+        userState[userId] = { photoUrls: [], step: "feedback" };
+        await ctx.reply(
+          "Please provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us."
         );
         break;
 
       default:
-        ctx.reply('Unexpected input. Please restart the process by typing /start.');
+        await ctx.reply("Please use the menu options or type /start to begin.");
+        break;
     }
-  });
+    return;
+  }
 
-  // Command: /cancel
-  bot.command('cancel', (ctx) => {
-    userState[ctx.chat.id] = { photoUrls: [], step: null }; // Reset user state
-    ctx.reply('Process canceled. You can start over by typing /start.', mainMenu);
-  });
+  // Handle state-driven workflows
+  switch (state.step) {
+    case "awaiting_ton_hash": {
+      const tonHash = ctx.message.text;
+      const tonHashRegex = /^\d+:[0-9a-fA-F]+$/;
 
-  // Fallback: Handle unmatched messages
-  bot.on('text', (ctx) => {
-    ctx.reply('Please use the menu options or type /start to begin.');
-  });
+      if (!tonHashRegex.test(tonHash)) {
+        await ctx.reply(
+          "Invalid TON transaction hash. Please ensure it is a valid format."
+        );
+        return;
+      }
+
+      // Update the TON hash in the database
+      const savedDocument = await ImageModel.findOneAndUpdate(
+        { UserId: userId.toString() },
+        { TonTransactionHash: tonHash },
+        { new: true }
+      );
+
+      console.log("Updated document:", savedDocument);
+
+      await ctx.replyWithMarkdown(
+        `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
+      );
+
+      // Reset user state
+      userState[userId] = { photoUrls: [], step: null };
+      break;
+    }
+
+    case "feedback": {
+      const feedback = ctx.message.text;
+
+      console.log("Feedback:", feedback);
+      console.log(`userName: ${ctx.from?.username}`);
+
+      // Save feedback to the database
+      const savedDocument = await ImageModel.findOneAndUpdate(
+        { UserId: userId.toString() },
+        { UserFeedback: feedback },
+        { upsert: true, new: true }
+      );
+
+      console.log("Saved feedback document:", savedDocument);
+
+      await ctx.replyWithMarkdown(
+        `*Feedback received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nThank you for providing your feedback. We appreciate your input and will use it to improve the Rats Kingdom platform.\n\nWe look forward to serving you better in the future.`
+      );
+
+      // Reset user state
+      userState[userId] = { photoUrls: [], step: null };
+      break;
+    }
+
+    default:
+      await ctx.reply("Unexpected input. Please restart the process by typing /start.");
+      break;
+  }
+});
+
+  // // Command: /cancel
+  // bot.command("cancel", (ctx) => {
+  //   userState[ctx.chat.id] = { photoUrls: [], step: null }; // Reset user state
+  //   ctx.reply(
+  //     "Process canceled. You can start over by typing /start.",
+  //     mainMenu
+  //   );
+  // });
+
+  // // Fallback: Handle unmatched messages
+  // bot.on("text", (ctx) => {
+  //   ctx.reply("Please use the menu options or type /start to begin.line-316");
+  // });
 
   // Start the bot
   bot.launch();
-  console.log('Bot is up and running!');
+  console.log("Bot is up and running!");
 
   // Enable graceful shutdown
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
 }
 
 export default createBot;
