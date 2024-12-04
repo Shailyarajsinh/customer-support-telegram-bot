@@ -238,26 +238,18 @@ bot.on("text", async (ctx) => {
   switch (state.step) {
     case "awaiting_ton_hash": {
       const tonHash = ctx.message.text;
-      const tonHashRegex = /^\d+:[0-9a-fA-F]+$/;
-
-      if (!tonHashRegex.test(tonHash)) {
-        await ctx.reply(
-          "Invalid TON transaction hash. Please ensure it is a valid format."
-        );
-        return;
-      }
 
       // Update the TON hash in the database
       const savedDocument = await ImageModel.findOneAndUpdate(
-        { UserId: userId.toString() },
-        { TonTransactionHash: tonHash },
-        { new: true }
+      { UserId: userId.toString() },
+      { TonTransactionHash: tonHash },
+      { new: true }
       );
 
       console.log("Updated document:", savedDocument);
 
       await ctx.replyWithMarkdown(
-        `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
+      `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
       );
 
       // Reset user state
