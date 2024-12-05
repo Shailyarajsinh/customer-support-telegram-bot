@@ -5,6 +5,7 @@ import { cloudinary, UploadApiResponse } from "./cloudinary";
 import { ImageModel } from "./models/image.model";
 import { BOT_TOKEN } from "./config";
 import { Buffer } from "buffer";
+import { TicketModel } from "./models/Tickit.model";
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ function createBot() {
   const mainMenu = Markup.keyboard([
     ["Rats Kingdom - Introduction", "🤌 Get My referal link"],
     ["Profile Verification Issue", "Updates"],
-    ["feedback", "📞 Contact Support"],
+    ["feedback", "Raise a Ticket"],
   ])
     .resize()
     .oneTime();
@@ -89,14 +90,38 @@ function createBot() {
   });
 
   // Command: Contact Support
-  bot.hears("📞 Contact Support", async (ctx) => {
-    ctx.reply(
-      `
-      Please contact our support team at\n
-      📧 Email: xyz@gmail.com\n
-      📞 Phone: XXX-XXX-XXXX \n
-      🌐 Website: WWW.ABC.COM\n
-      `
+  // bot.hears("📞 Contact Support", async (ctx) => {
+  //   ctx.reply(
+  //     `
+  //     Please contact our support team at\n
+  //     📧 Email: xyz@gmail.com\n
+  //     📞 Phone: XXX-XXX-XXXX \n
+  //     🌐 Website: WWW.ABC.COM\n
+  //     `
+  //   );
+  // });
+
+  // Command: Raise a Ticket
+
+  let TicketId = Math.floor(100000 + Math.random() * 900000);
+  bot.hears("Raise a Ticket", async (ctx) => {
+    userState[ctx.chat.id] = {
+      photoUrls: [],
+      step: "awaiting_issue_screenshot",
+    };
+
+    await ctx.reply(
+      `Ticket ID: ${TicketId}\n\nPlease upload a screenshot or photo related to your issue. If you don't have any image please type the '/skip' command.`
+    );
+  });
+
+  bot.command("skip", async (ctx) => {
+    userState[ctx.chat.id] = {
+      photoUrls: [],
+      step: "awaiting_issue_details",
+    };
+    await ctx.reply(
+      "Please provide details about the issue."
     );
   });
 
@@ -165,6 +190,7 @@ function createBot() {
           // Save the image to MongoDB
           let savedDocument;
           switch (state.step) {
+
             case "awaiting_profile_screenshot":
               savedDocument = await ImageModel.findOneAndUpdate(
                 { UserId: userId.toString() },
@@ -195,6 +221,22 @@ function createBot() {
               );
               break;
 
+            case "awaiting_issue_screenshot":
+              savedDocument = await TicketModel.findOneAndUpdate(
+                { UserId: userId.toString() },
+                {
+                  UserId: userId.toString(),
+                  Issue_Image: result.secure_url,
+                  TickitId: TicketId,
+                },
+                { upsert: true, new: true } // Create new if not exists
+              );
+              userState[userId].step = "awaiting_issue_details";
+              await ctx.reply(
+                "Issue screenshot received. Please provide details about the issue."
+              );
+              break;
+
             default:
               await ctx.reply(
                 "Unexpected step. Please restart the process by typing /start."
@@ -212,80 +254,104 @@ function createBot() {
     }
   });
 
-// Unified Text Handler
-bot.on("text", async (ctx) => {
-  const userId = ctx.chat.id;
-  const state = userState[userId];
+  // Unified Text Handler
+  bot.on("text", async (ctx) => {
+    const userId = ctx.chat.id;
+    const state = userState[userId];
 
-  if (!state || !state.step) {
-    // Handle specific keywords outside the process
-    switch (ctx.message.text.toLowerCase()) {
-      case "feedback":
-        userState[userId] = { photoUrls: [], step: "feedback" };
-        await ctx.reply(
-          "Please provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us."
+    if (!state || !state.step) {
+      // Handle specific keywords outside the process
+      switch (ctx.message.text.toLowerCase()) {
+        case "feedback":
+          userState[userId] = { photoUrls: [], step: "feedback" };
+          await ctx.reply(
+            "Please provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us."
+          );
+          break;
+
+        default:
+          await ctx.reply("Please use the menu options or type /start to begin.");
+          break;
+      }
+      return;
+    }
+
+    // Handle state-driven workflows
+    switch (state.step) {
+      case "awaiting_ton_hash": {
+        const tonHash = ctx.message.text;
+
+        // Update the TON hash in the database
+        const savedDocument = await ImageModel.findOneAndUpdate(
+          { UserId: userId.toString() },
+          { TonTransactionHash: tonHash },
+          { new: true }
         );
+
+        console.log("Updated document:", savedDocument);
+
+        await ctx.replyWithMarkdown(
+          `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
+        );
+
+        // Reset user state
+        userState[userId] = { photoUrls: [], step: null };
         break;
+      }
+
+      case "feedback": {
+        const feedback = ctx.message.text;
+
+        console.log("Feedback:", feedback);
+        console.log(`userName: ${ctx.from?.username}`);
+
+        // Save feedback to the database
+        const savedDocument = await ImageModel.findOneAndUpdate(
+          { UserId: userId.toString() },
+          { UserFeedback: feedback },
+          { upsert: true, new: true }
+        );
+
+        console.log("Saved feedback document:", savedDocument);
+
+        await ctx.replyWithMarkdown(
+          `*Feedback received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nThank you for providing your feedback. We appreciate your input and will use it to improve the Rats Kingdom platform.\n\nWe look forward to serving you better in the future.`
+        );
+
+        // Reset user state
+        userState[userId] = { photoUrls: [], step: null };
+        break;
+      }
+
+      case "awaiting_issue_details": {
+        const issueDetails = ctx.message.text;
+
+        // Update the issue details in the database
+        const savedDocument = await TicketModel.findOneAndUpdate(
+          { UserId: userId.toString() },
+
+          { 
+            IssueDetails: issueDetails,
+          },
+          { new: true , upsert: true} // Create new if not exists
+        );
+
+        console.log("Updated document:", savedDocument);
+
+        await ctx.replyWithMarkdown(
+          `*Issue details received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
+        );
+
+        // Reset user state
+        userState[userId] = { photoUrls: [], step: null };
+        break;
+      }
 
       default:
-        await ctx.reply("Please use the menu options or type /start to begin.");
+        await ctx.reply("Unexpected input. Please restart the process by typing /start.");
         break;
     }
-    return;
-  }
-
-  // Handle state-driven workflows
-  switch (state.step) {
-    case "awaiting_ton_hash": {
-      const tonHash = ctx.message.text;
-
-      // Update the TON hash in the database
-      const savedDocument = await ImageModel.findOneAndUpdate(
-      { UserId: userId.toString() },
-      { TonTransactionHash: tonHash },
-      { new: true }
-      );
-
-      console.log("Updated document:", savedDocument);
-
-      await ctx.replyWithMarkdown(
-      `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
-      );
-
-      // Reset user state
-      userState[userId] = { photoUrls: [], step: null };
-      break;
-    }
-
-    case "feedback": {
-      const feedback = ctx.message.text;
-
-      console.log("Feedback:", feedback);
-      console.log(`userName: ${ctx.from?.username}`);
-
-      // Save feedback to the database
-      const savedDocument = await ImageModel.findOneAndUpdate(
-        { UserId: userId.toString() },
-        { UserFeedback: feedback },
-        { upsert: true, new: true }
-      );
-
-      console.log("Saved feedback document:", savedDocument);
-
-      await ctx.replyWithMarkdown(
-        `*Feedback received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nThank you for providing your feedback. We appreciate your input and will use it to improve the Rats Kingdom platform.\n\nWe look forward to serving you better in the future.`
-      );
-
-      // Reset user state
-      userState[userId] = { photoUrls: [], step: null };
-      break;
-    }
-
-    default:
-      await ctx.reply("Unexpected input. Please restart the process by typing /start.");
-      break;
-  }
-});
+  });
 
   // // Command: /cancel
   // bot.command("cancel", (ctx) => {
