@@ -6,6 +6,9 @@ import { ImageModel } from "./models/image.model";
 import { BOT_TOKEN } from "./config";
 import { Buffer } from "buffer";
 import { TicketModel } from "./models/Tickit.model";
+import { UserStateModel } from "./models/Userstate.model";
+
+
 
 dotenv.config();
 
@@ -28,19 +31,21 @@ function createBot() {
     .oneTime();
 
   // Store user states for step-by-step processes
-  const userState: Record<
-    number,
-    {
-      photoUrls: any;
-      step: string | null;
-    }
-  > = {};
+  // const userState: { [key: number]: { photoUrls: string[]; step: string | null } } = {};
+
+  const resetUserState = async (userId: number) => {
+    await UserStateModel.findOneAndUpdate(
+      { userId },
+      { step: null, photoUrls: [] },
+      { upsert: true }
+    );
+  };
 
   // Command: /start
-  bot.start((ctx) => {
-    // Reset the user's state
-    userState[ctx.chat.id] = { photoUrls: [], step: null };
-    ctx.reply(
+  bot.start(async (ctx) => {
+    const userId = ctx.chat.id;
+    await resetUserState(userId);
+    await ctx.reply(
       "Welcome to the Rats Kingdom Support Bot! Please choose an option:",
       mainMenu
     );
@@ -104,22 +109,25 @@ function createBot() {
   // Command: Raise a Ticket
 
   let TicketId = Math.floor(100000 + Math.random() * 900000);
-  bot.hears("Raise a Ticket", async (ctx) => {
-    userState[ctx.chat.id] = {
-      photoUrls: [],
-      step: "awaiting_issue_screenshot",
-    };
 
+  // Command: Raise a Ticket
+  bot.hears("Raise a Ticket", async (ctx) => {
+    await UserStateModel.findOneAndUpdate(
+      { userId: ctx.chat.id },
+      { step: "awaiting_issue_screenshot", photoUrls: [] },
+      { upsert: true }
+    );
     await ctx.reply(
       `Ticket ID: ${TicketId}\n\nPlease upload a screenshot or photo related to your issue. If you don't have any image please type the '/skip' command.`
     );
   });
 
   bot.command("skip", async (ctx) => {
-    userState[ctx.chat.id] = {
-      photoUrls: [],
-      step: "awaiting_issue_details",
-    };
+    await UserStateModel.findOneAndUpdate(
+      { userId: ctx.chat.id },
+      { step: "awaiting_issue_details", photoUrls: [] },
+      { upsert: true }
+    );
     await ctx.reply(
       "Please provide details about the issue."
     );
@@ -127,10 +135,11 @@ function createBot() {
 
   // Command: "Profile Verification Issue"
   bot.hears("Profile Verification Issue", async (ctx) => {
-    userState[ctx.chat.id] = {
-      photoUrls: [],
-      step: "awaiting_profile_screenshot",
-    };
+    await UserStateModel.findOneAndUpdate(
+      { userId: ctx.chat.id },
+      { step: "awaiting_profile_screenshot", photoUrls: [] },
+      { upsert: true }
+    );
     await ctx.reply(
       "Please upload a screenshot of your profile page showing the verification issue."
     );
@@ -139,7 +148,8 @@ function createBot() {
   // Handler: Photo Uploads
   bot.on("photo", async (ctx) => {
     const userId = ctx.chat.id;
-    const state = userState[userId];
+    const state = await UserStateModel.findOne({ userId });
+
 
     if (!state || !state.step) {
       await ctx.reply(
@@ -154,7 +164,7 @@ function createBot() {
       // Get file path
       const userId = ctx.chat.id;
       const userName = ctx.from?.username;
-      const state = userState[userId];
+      const state = await UserStateModel.findOne({ userId });
 
       if (!state || !state.step) {
         await ctx.reply(
@@ -201,7 +211,8 @@ function createBot() {
                 },
                 { upsert: true, new: true } // Create new if not exists
               );
-              userState[userId].step = "awaiting_ton_transaction_screenshot";
+              state.step = "awaiting_ton_transaction_screenshot";
+              await state.save();
               await ctx.reply(
                 "Profile screenshot received. Now, upload a screenshot of your TON transaction."
               );
@@ -215,7 +226,8 @@ function createBot() {
                 },
                 { new: true } // Update only
               );
-              userState[userId].step = "awaiting_ton_hash";
+              state.step = "awaiting_ton_hash";
+              await state.save();
               await ctx.reply(
                 "TON transaction screenshot received. Please provide the TON transaction hash."
               );
@@ -231,16 +243,32 @@ function createBot() {
                 },
                 { upsert: true, new: true } // Create new if not exists
               );
-              userState[userId].step = "awaiting_issue_details";
+              state.step = "awaiting_issue_details";
+              await state.save();
               await ctx.reply(
                 "Issue screenshot received. Please provide details about the issue."
               );
               break;
 
             default:
-              await ctx.reply(
-                "Unexpected step. Please restart the process by typing /start."
-              );
+              if (state.step === "awaiting_ton_hash") {
+                await ctx.reply(
+                  `Wrong Input. Please provide the TON transaction hash in text.`
+                );
+
+              }
+              else if (state.step === "awaiting_issue_details") {
+                await ctx.reply(
+                  `You have already uploaded the issue screenshot. Please provide details about the issue.`
+                );
+              }
+
+              else {
+                await ctx.reply(
+                  "You have already uploaded the profile screenshot. Please proceed with the next step."
+                );
+              }
+
           }
 
           console.log("Updated document:", savedDocument);
@@ -255,15 +283,22 @@ function createBot() {
   });
 
   // Unified Text Handler
+
   bot.on("text", async (ctx) => {
     const userId = ctx.chat.id;
-    const state = userState[userId];
+    let state = await UserStateModel.findOne({ userId });
 
-    if (!state || !state.step) {
+    // If no state exists, create a default one
+    if (!state) {
+      state = new UserStateModel({ userId, step: null, photoUrls: [] });
+    }
+
+    if (!state.step) {
       // Handle specific keywords outside the process
       switch (ctx.message.text.toLowerCase()) {
         case "feedback":
-          userState[userId] = { photoUrls: [], step: "feedback" };
+          state.step = "feedback";
+          await state.save();
           await ctx.reply(
             "Please provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us."
           );
@@ -279,6 +314,14 @@ function createBot() {
     // Handle state-driven workflows
     switch (state.step) {
       case "awaiting_ton_hash": {
+
+
+        if (!ctx.message.text || "") {
+          await ctx.reply("Please provide the TON transaction hash in words.");
+          return;
+        }
+        console.log("TON Hash:", ctx.message.text);
+
         const tonHash = ctx.message.text;
 
         // Update the TON hash in the database
@@ -294,8 +337,9 @@ function createBot() {
           `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
         );
 
-        // Reset user state
-        userState[userId] = { photoUrls: [], step: null };
+        // Reset state in database
+        state.step = ""
+        await state.save();
         break;
       }
 
@@ -318,8 +362,9 @@ function createBot() {
           `*Feedback received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nThank you for providing your feedback. We appreciate your input and will use it to improve the Rats Kingdom platform.\n\nWe look forward to serving you better in the future.`
         );
 
-        // Reset user state
-        userState[userId] = { photoUrls: [], step: null };
+        // Reset state in database
+        state.step = "null";
+        await state.save();
         break;
       }
 
@@ -329,11 +374,8 @@ function createBot() {
         // Update the issue details in the database
         const savedDocument = await TicketModel.findOneAndUpdate(
           { UserId: userId.toString() },
-
-          { 
-            IssueDetails: issueDetails,
-          },
-          { new: true , upsert: true} // Create new if not exists
+          { IssueDetails: issueDetails },
+          { upsert: true, new: true }
         );
 
         console.log("Updated document:", savedDocument);
@@ -342,30 +384,54 @@ function createBot() {
           `*Issue details received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
         );
 
-        // Reset user state
-        userState[userId] = { photoUrls: [], step: null };
+        // Reset state in database
+        state.step = "null";
+        await state.save();
         break;
       }
 
       default:
-        await ctx.reply("Unexpected input. Please restart the process by typing /start.");
+
+        if (state.step === "awaiting_issue_screenshot") {
+          await ctx.reply(
+            `Wrong Input. Please upload a screenshot or photo related to your issue. If you don't have any image please type the '/skip' command.`
+          );
+        }
+        
+        else if (state.step === "awaiting_profile_screenshot") {
+          await ctx.reply(
+            `wrong Input. Please upload a screenshot of your profile page showing the verification issue.`
+          );
+        }
+
+        else if (state.step === "awaiting_ton_transaction_screenshot") {
+          await ctx.reply(
+            `Wrong Input. Please upload a screenshot of your TON transaction.`
+          );
+        }
+        
+        else {
+          await ctx.reply("Unexpected input. Please restart the process by typing /start.");
+        }
+
         break;
     }
   });
 
-  // // Command: /cancel
-  // bot.command("cancel", (ctx) => {
-  //   userState[ctx.chat.id] = { photoUrls: [], step: null }; // Reset user state
-  //   ctx.reply(
-  //     "Process canceled. You can start over by typing /start.",
-  //     mainMenu
-  //   );
-  // });
 
-  // // Fallback: Handle unmatched messages
-  // bot.on("text", (ctx) => {
-  //   ctx.reply("Please use the menu options or type /start to begin.line-316");
-  // });
+  // Command: /cancel
+  bot.command("cancel", async (ctx) => {
+    await resetUserState(ctx.chat.id);
+    ctx.reply(
+      "Process canceled. You can start over by typing /start.",
+      mainMenu
+    );
+  });
+
+  // Fallback: Handle unmatched messages
+  bot.on("text", (ctx) => {
+    ctx.reply("Please use the menu options or type /start to begin.line-316");
+  });
 
   // Start the bot
   bot.launch();
