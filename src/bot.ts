@@ -7,7 +7,8 @@ import { BOT_TOKEN } from "./config";
 import { Buffer } from "buffer";
 import { TicketModel } from "./models/Tickit.model";
 import { UserStateModel } from "./models/Userstate.model";
-
+import { isRateLimited } from "./rateLimiter";
+import { RateLimitModel } from "./models/RateLimit.model";
 
 
 dotenv.config();
@@ -22,10 +23,16 @@ function createBot() {
   const bot = new Telegraf(BOT_TOKEN as string);
 
   // Define the main menu options
-  const mainMenu = Markup.keyboard([
+  let mainMenu = Markup.keyboard([
     ["Rats Kingdom - Introduction", "🤌 Get My referal link"],
     ["Profile Verification Issue", "Updates"],
     ["feedback", "Raise a Ticket"],
+  ])
+    .resize()
+    .oneTime();
+
+  let rateLimitedMenu = Markup.keyboard([
+    [`You're rate limited. Please wait for 30 seconds.`],
   ])
     .resize()
     .oneTime();
@@ -44,7 +51,41 @@ function createBot() {
   // Command: /start
   bot.start(async (ctx) => {
     const userId = ctx.chat.id;
+
+
+    // Set cooldown period to 5 seconds
+    const cooldown = 30000; // 30 seconds
+
+    // Check if the user is rate-limited  
+    const rateLimited = await isRateLimited(userId.toString(), cooldown);
+
+    const user = await RateLimitModel.findOne({ userId: userId });
+
+    // access the ignoreUntil field and convert it to seconds
+    const currentTime = new Date().getTime() // get the current time in milliseconds
+    const ignoreUntil = user?.ignoreUntil?.getTime(); // get the time in milliseconds
+
+    const ignoreUntilSeconds = ignoreUntil ? Math.floor((ignoreUntil - currentTime) / 1000) : 0; // convert to seconds
+
+    if (rateLimited) {
+      return ctx.reply(
+        `You are rate-limited. Please wait for a while before starting a new process until the ${ignoreUntilSeconds} seconds.`,
+        mainMenu = rateLimitedMenu
+      );
+    }
+    else {
+      mainMenu = Markup.keyboard([
+        ["Rats Kingdom - Introduction", "🤌 Get My referal link"],
+        ["Profile Verification Issue", "Updates"],
+        ["feedback", "Raise a Ticket"],
+        ])
+        .resize()
+        .oneTime();
+    }
+
+    // Reset the user state
     await resetUserState(userId);
+
     await ctx.reply(
       "Welcome to the Rats Kingdom Support Bot! Please choose an option:",
       mainMenu
@@ -397,7 +438,7 @@ function createBot() {
             `Wrong Input. Please upload a screenshot or photo related to your issue. If you don't have any image please type the '/skip' command.`
           );
         }
-        
+
         else if (state.step === "awaiting_profile_screenshot") {
           await ctx.reply(
             `wrong Input. Please upload a screenshot of your profile page showing the verification issue.`
@@ -409,7 +450,7 @@ function createBot() {
             `Wrong Input. Please upload a screenshot of your TON transaction.`
           );
         }
-        
+
         else {
           await ctx.reply("Unexpected input. Please restart the process by typing /start.");
         }
