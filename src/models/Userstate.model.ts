@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 // Define the User State Schema
 const userStateSchema = new mongoose.Schema({
   userId: { type: Number, required: true, unique: true },
-  step: { type: String, default: null },
+  step: { type: String, default: null, required: false },
   photoUrls: { type: [String], default: [] },
 });
 

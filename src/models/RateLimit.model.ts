@@ -1,9 +1,13 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
-const RateLimitSchema = new mongoose.Schema({
-  userId: { type: Number, required: true, unique: true }, // User's Telegram ID
-  lastInteraction: { type: Date, default: Date.now },     // Last message timestamp
-  ignoreUntil: { type: Date, default: null },             // Time until the user is ignored
+const RateLimitSchema = new Schema({
+  userId: { type: String, required: true },
+  lastInteraction: { type: Date, default: new Date() },
+  ignoreUntil: { type: Date, default: null },
+  blockedUntil: { type: Date, default: null, required: false },
+  commandCount: { type: Number, default: 0 },
+  lastNotification: { type: Date, default: null, required: false }, // Track the last notification time
 });
 
 export const RateLimitModel = mongoose.model('RateLimit', RateLimitSchema);
+
