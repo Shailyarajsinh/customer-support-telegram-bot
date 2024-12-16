@@ -1,6 +1,6 @@
 import { RateLimitModel } from './models/RateLimit.model'; // Adjust the path to your model file
 
-export const isRateLimited = async (userId: string, cooldown: number, ctx: any) => {
+export const isRateLimited = async (userId: any, cooldown: number, ctx: any) => {
   const now = new Date();
 
   // Fetch user's rate limit record

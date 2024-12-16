@@ -93,30 +93,29 @@ function createBot() {
 
   bot.start(async (ctx) => {
     try {
-      const userId = ctx.chat.id.toString();
+      const userId = ctx.chat.id
       const cooldown = 2000; // 2 seconds cooldown
-  
+
       // Check if the user is rate-limited or blocked
       const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
-  
+
       if (blocked) {
         if (notify) {
           // Notify the user only if required
-          await ctx.reply(
-            `You have been temporarily blocked for spamming. Please wait ${secondsRemaining} seconds before sending commands.
-             *You can start over by typing '/start' after the cooldown period.*`,
+          await ctx.replyWithMarkdown(
+            `*You have been temporarily blocked for spamming.*\n\nPlease wait *${secondsRemaining} seconds* before sending commands.\n\n_You can start over by typing_ --/start-- _after the cooldown period._`,
             rateLimitedMenu
           );
         }
         return; // Stop further execution
       }
-  
+
       if (rateLimited) {
         // Optionally notify rate-limited users
         await ctx.reply("You're sending messages too quickly. Please wait a moment.");
         return;
       }
-  
+
       // Define the main menu
       const mainMenu = Markup.keyboard([
         ["Rats Kingdom - Introduction", "🤌 Get My referral link"],
@@ -125,10 +124,10 @@ function createBot() {
       ])
         .resize()
         .oneTime();
-  
+
       // Reset the user state
       await resetUserState(Number(userId));
-  
+
       // Send the main menu
       await ctx.reply(
         "Welcome to the Rats Kingdom Support Bot! Please choose an option:",
@@ -139,7 +138,7 @@ function createBot() {
       await ctx.reply("An error occurred while processing your request. Please try again later.");
     }
   });
-  
+
 
   // Command: Updates
   bot.hears("Updates", async (ctx) => {
@@ -383,49 +382,48 @@ function createBot() {
 
   bot.on("photo", async (ctx) => {
     try {
-      const userId = ctx.chat.id.toString(); // Ensure `userId` is a string
+      const userId = ctx.chat.id
       const cooldown = 5000; // Set cooldown period to 5 seconds
-  
+
       // Check if the user is rate-limited (blocked for spamming)
       const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
-  
+
       if (blocked) {
         if (notify) {
           // Notify the user only if necessary
-          await ctx.reply(
-            `You have been temporarily blocked for spamming. Please wait ${secondsRemaining} seconds before sending more commands.\n\n
-             *You can start over by typing '/start' after the cooldown period*.`,
+          await ctx.replyWithMarkdown(
+            `*You have been temporarily blocked for spamming.*\n\nPlease wait *${secondsRemaining} seconds* before sending commands.\n\n_You can start over by typing_ --/start-- _after the cooldown period._`,
             rateLimitedMenu
           );
         }
         return; // Stop further execution if blocked
       }
-  
+
       if (rateLimited) {
         // Silently block rate-limited users without sending a reply
         return;
       }
-  
+
       // Fetch user state to check if they are in a process
       const state = await UserStateModel.findOne({ userId });
-  
+
       if (!state || !state.step) {
         await ctx.reply(
           "Please start a process first by selecting an option from the menu."
         );
         return;
       }
-  
+
       // Get fileId from the last photo in the message
       const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-  
+
       // Get file path and prepare for download
       const file = await ctx.telegram.getFile(fileId);
       const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
-  
+
       const response = await axios.get(fileUrl, { responseType: "arraybuffer" });
       const imageBuffer = Buffer.from(response.data);
-  
+
       // Upload the image to Cloudinary
       const uploadStream = cloudinary.uploader.upload_stream(
         { resource_type: "auto", folder: "Bot_Uploads" },
@@ -435,13 +433,13 @@ function createBot() {
             await ctx.reply("Failed to upload the image. Please try again.");
             return;
           }
-  
+
           if (!result) {
             console.error("No result returned from Cloudinary.");
             await ctx.reply("Failed to process the image. Please try again.");
             return;
           }
-  
+
           // Save the image to MongoDB based on the current step
           let savedDocument;
           switch (state.step) {
@@ -461,7 +459,7 @@ function createBot() {
                 "Profile screenshot received. Now, upload a screenshot of your TON transaction."
               );
               break;
-  
+
             case "awaiting_ton_transaction_screenshot":
               savedDocument = await ImageModel.findOneAndUpdate(
                 { UserId: userId },
@@ -476,9 +474,9 @@ function createBot() {
                 "TON transaction screenshot received. Please provide the TON transaction hash."
               );
               break;
-  
+
             case "awaiting_issue_screenshot":
-              const ticketId =  Math.floor(100000 + Math.random() * 900000);
+              const ticketId = Math.floor(100000 + Math.random() * 900000);
               savedDocument = await TicketModel.findOneAndUpdate(
                 { UserId: userId },
                 {
@@ -494,25 +492,25 @@ function createBot() {
                 "Issue screenshot received. Please provide details about the issue."
               );
               break;
-  
+
             default:
               await ctx.reply(
                 "Unexpected step encountered. Please restart the process using /start."
               );
               break;
           }
-  
+
           console.log("Updated document:", savedDocument);
         }
       );
-  
+
       uploadStream.end(imageBuffer);
     } catch (error) {
       console.error("Error handling photo upload:", error);
       await ctx.reply("An error occurred while processing your image. Please try again.");
     }
   });
-  
+
 
   // Unified Text Handler
   // bot.on("text", async (ctx) => {
@@ -662,39 +660,38 @@ function createBot() {
   //       break;
   //   }
   // });
-  
+
 
   bot.on("text", async (ctx) => {
     try {
-      const userId = ctx.chat.id.toString(); // Convert userId to a string
-      const cooldown = 5000; // Set cooldown period to 5 seconds
-  
+      const userId = ctx.chat.id
+      const cooldown = 2000; // Set cooldown period to 5 seconds
+
       // Check if the user is rate-limited
       const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
-  
+
       if (blocked) {
         if (notify) {
-          await ctx.reply(
-            `You have been temporarily blocked for spamming. Please wait ${secondsRemaining} seconds before sending more commands.\n\n
-             *You can start over by typing '/start' after the cooldown period*.`,
+          await ctx.replyWithMarkdown(
+            `*You have been temporarily blocked for spamming.*\n\nPlease wait *${secondsRemaining} seconds* before sending commands.\n\n_You can start over by typing_ --/start-- _after the cooldown period._`,
             rateLimitedMenu
           );
         }
         return; // Stop further execution if blocked
       }
-  
+
       if (rateLimited) {
         // Silently block rate-limited users without sending a reply
         return;
       }
-  
+
       let state = await UserStateModel.findOne({ userId });
-  
+
       // If no state exists, create a default one
       if (!state) {
         state = new UserStateModel({ userId, step: null, photoUrls: [] });
       }
-  
+
       if (!state.step) {
         // Handle specific keywords outside the process
         switch (ctx.message.text.toLowerCase()) {
@@ -705,14 +702,14 @@ function createBot() {
               "Please provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us."
             );
             break;
-  
+
           default:
             await ctx.reply("Please use the menu options or type /start to begin.");
             break;
         }
         return;
       }
-  
+
       // Handle state-driven workflows
       switch (state.step) {
         case "awaiting_ton_hash": {
@@ -720,72 +717,72 @@ function createBot() {
             await ctx.reply("Please provide the TON transaction hash in words.");
             return;
           }
-  
+
           const tonHash = ctx.message.text;
-  
+
           // Update the TON hash in the database
           const savedDocument = await ImageModel.findOneAndUpdate(
             { UserId: userId },
             { TonTransactionHash: tonHash },
             { new: true }
           );
-  
+
           console.log("Updated document:", savedDocument);
-  
+
           await ctx.replyWithMarkdown(
             `*TON transaction hash received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the TON transaction issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
           );
-  
+
           // Reset state in the database
           state.step = null;
           await state.save();
           break;
         }
-  
+
         case "feedback": {
           const feedback = ctx.message.text;
-  
+
           // Save feedback to the database
           const savedDocument = await ImageModel.findOneAndUpdate(
             { UserId: userId },
             { UserFeedback: feedback },
             { upsert: true, new: true }
           );
-  
+
           console.log("Saved feedback document:", savedDocument);
-  
+
           await ctx.replyWithMarkdown(
             `*Feedback received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nThank you for providing your feedback. We appreciate your input and will use it to improve the Rats Kingdom platform.\n\nWe look forward to serving you better in the future.`
           );
-  
+
           // Reset state in the database
           state.step = null;
           await state.save();
           break;
         }
-  
+
         case "awaiting_issue_details": {
           const issueDetails = ctx.message.text;
-  
+
           // Update the issue details in the database
           const savedDocument = await TicketModel.findOneAndUpdate(
             { UserId: userId },
             { IssueDetails: issueDetails },
             { upsert: true, new: true }
           );
-  
+
           console.log("Updated document:", savedDocument);
-  
+
           await ctx.replyWithMarkdown(
             `*Issue details received.* \n\n*${ctx.from.first_name.toUpperCase()}*\n\nWe have received your request regarding the issue. Our team will review the information provided and resolve your issue if it is genuine.\n\nThank you for your patience.`
           );
-  
+
           // Reset state in the database
           state.step = null;
           await state.save();
           break;
         }
-  
+
         default:
           // Handle unexpected inputs
           switch (state.step) {
@@ -794,19 +791,19 @@ function createBot() {
                 "Wrong input. Please upload a screenshot or photo related to your issue. If you don't have any image, please type the `/skip` command."
               );
               break;
-  
+
             case "awaiting_profile_screenshot":
               await ctx.reply(
                 "Wrong input. Please upload a screenshot of your profile page showing the verification issue."
               );
               break;
-  
+
             case "awaiting_ton_transaction_screenshot":
               await ctx.reply(
                 "Wrong input. Please upload a screenshot of your TON transaction."
               );
               break;
-  
+
             default:
               await ctx.reply("Unexpected input. Please restart the process by typing /start.");
               break;
@@ -818,7 +815,7 @@ function createBot() {
       await ctx.reply("An error occurred while processing your request. Please try again.");
     }
   });
-  
+
   // Command: /cancel
   bot.command("cancel", async (ctx) => {
     await resetUserState(ctx.chat.id);
