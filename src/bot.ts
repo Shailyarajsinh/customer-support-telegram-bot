@@ -386,10 +386,7 @@ function createBot() {
 
       case "feedback": {
         const feedback = ctx.message.text;
-
-        console.log("Feedback:", feedback);
-        console.log(`userName: ${ctx.from?.username}`);
-
+        
         // Save feedback to the database
         const savedDocument = await ImageModel.findOneAndUpdate(
           { UserId: userId.toString() },
