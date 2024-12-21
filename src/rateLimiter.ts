@@ -37,6 +37,12 @@ export const isRateLimited = async (userId: any, cooldown: number, ctx: any) => 
       }
     }
 
+    // Check if the user hasn't sent a message for 180 seconds and reset command count
+    const timeSinceLastInteraction = now.getTime() - new Date(record.lastInteraction).getTime();
+    if (timeSinceLastInteraction > 180 * 1000) { //
+      record.commandCount = 0; // Reset command count
+    }
+
     // Increment command count and check for spamming
     record.commandCount = (record.commandCount || 0) + 1;
 
@@ -50,7 +56,6 @@ export const isRateLimited = async (userId: any, cooldown: number, ctx: any) => 
     }
 
     // Check if the user is rate-limited (cooldown)
-    const timeSinceLastInteraction = now.getTime() - new Date(record.lastInteraction).getTime();
     if (timeSinceLastInteraction < cooldown) {
       record.ignoreUntil = new Date(now.getTime() + cooldown);
       await record.save();
@@ -61,7 +66,7 @@ export const isRateLimited = async (userId: any, cooldown: number, ctx: any) => 
     record = new RateLimitModel({
       userId,
       lastInteraction: now,
-      commandCount: 1,
+      commandCount: 0,
     });
   }
 
@@ -71,3 +76,6 @@ export const isRateLimited = async (userId: any, cooldown: number, ctx: any) => 
 
   return { blocked: false, rateLimited: false };
 };
+
+
+
