@@ -17,7 +17,7 @@ if (!BOT_TOKEN) {
   throw new Error("Telegram Bot Token is missing. Add it to the .env file.");
 }
 
-function createBot() {
+function createBot() {  
   // Initialize the bot
   const bot = new Telegraf(BOT_TOKEN as string);
 
@@ -36,8 +36,6 @@ function createBot() {
     .resize()
     .oneTime();
 
-  // Store user states for step-by-step processes
-  // const userState: { [key: number]: { photoUrls: string[]; step: string | null } } = {};
 
   const resetUserState = async (userId: number) => {
     await UserStateModel.findOneAndUpdate(
@@ -70,7 +68,7 @@ function createBot() {
 
       if (rateLimited) {
         // Optionally notify rate-limited users
-        await ctx.replyWithMarkdown("You're sending messages too quickly. Please wait a moment.");
+        await ctx.replyWithMarkdown("🚫 *You're sending messages too quickly!* 🚫\n\n⏳ *Please wait a moment before trying again.* 🙏");
         return;
       }
 
@@ -88,15 +86,14 @@ function createBot() {
 
       // Send the main menu
       await ctx.replyWithMarkdown(
-        "Welcome to the Rats Kingdom Support Bot! Please choose an option:",
+        "🎉 *Welcome to the Rats Kingdom Support Bot!* 🎉\n\nPlease choose an option from the menu below to get started:",
         mainMenu
       );
     } catch (error) {
       console.error(`Error in bot.start (User ID: ${ctx.chat.id}):`, error);
-      await ctx.replyWithMarkdown("An error occurred while processing your request. Please try again later.");
+      await ctx.replyWithMarkdown("⚠️ *An error occurred while processing your request. Please try again later.* ⚠️");
     }
   });
-
 
   // Command: Updates
   bot.hears("📢 Updates", async (ctx) => {
@@ -136,7 +133,7 @@ function createBot() {
     const chatId = ctx.chat?.id;
     if (!chatId) {
       return ctx.replyWithMarkdown(
-        "Could not retrieve your referral link. Please try again."
+        "🚫 *Oops!* 🚫\n\n😔 *Could not retrieve your referral link. Please try again.* 🔄"
       );
     }
 
@@ -184,7 +181,7 @@ function createBot() {
       { upsert: true }
     );
     await ctx.replyWithMarkdown(
-      "Please upload a screenshot of your profile page showing the verification issue."
+      "📸 *Profile Verification Issue* 📸\n\nPlease upload a screenshot of your profile page showing the verification issue. 📝"
     );
   });
 
@@ -230,7 +227,7 @@ function createBot() {
 
       if (!state || !state.step) {
         await ctx.replyWithMarkdown(
-          "Please start a process first by selecting an option from the menu."
+          "🚫 *No Active Process!* 🚫\n\nPlease start a process first by selecting an option from the menu. 📋"
         );
         return;
       }
@@ -251,13 +248,13 @@ function createBot() {
         async (error: any, result: UploadApiResponse | undefined) => {
           if (error) {
             console.error("Cloudinary upload error:", error);
-            await ctx.replyWithMarkdown("Failed to upload the image. Please try again.");
+            await ctx.replyWithMarkdown("🚫 *Failed to upload the image.* 🚫\n\n😔 *Please try again.* 🔄");
             return;
           }
 
           if (!result) {
             console.error("No result returned from Cloudinary.");
-            await ctx.replyWithMarkdown("Failed to process the image. Please try again.");
+            await ctx.replyWithMarkdown("🚫 *Failed to upload the image.* 🚫\n\n😔 *Please try again.* 🔄");
             return;
           }
 
@@ -362,24 +359,6 @@ function createBot() {
       if (!state) {
         state = new UserStateModel({ userId, step: null, photoUrls: [] });
       }
-
-      // if (!state.step) {
-      //   // Handle specific keywords outside the process
-      //   switch (ctx.message.text.toLowerCase()) {
-      //     case "feedback":
-      //       state.step = "feedback";
-      //       await state.save();
-      //       await ctx.replyWithMarkdown(
-      //         "📝 *We Value Your Feedback!* 📝\n\nPlease provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us and helps us improve! 🌟"
-      //       );
-      //       break;
-
-      //     default:
-      //       await ctx.replyWithMarkdown("Please use the menu options or type /start to begin.");
-      //       break;
-      //   }
-      //   return;
-      // }
 
       // Handle state-driven workflows
       switch (state.step) {
@@ -494,11 +473,6 @@ function createBot() {
       "❌ Process canceled. You can start over by typing /start. 🚀",
       mainMenu
     );
-  });
-
-  // Fallback: Handle unmatched messages
-  bot.on("text", (ctx) => {
-    ctx.replyWithMarkdown("Please use the menu options or type /start to begin.line-316");
   });
 
   // Start the bot
