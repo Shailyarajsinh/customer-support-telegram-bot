@@ -9,7 +9,6 @@ import { TicketModel } from "./models/Tickit.model";
 import { UserStateModel } from "./models/Userstate.model";
 import { isRateLimited } from "./rateLimiter";
 
-
 dotenv.config();
 
 // Validate environment variables
@@ -17,7 +16,7 @@ if (!BOT_TOKEN) {
   throw new Error("Telegram Bot Token is missing. Add it to the .env file.");
 }
 
-function createBot() {  
+function createBot() {
   // Initialize the bot
   const bot = new Telegraf(BOT_TOKEN as string);
 
@@ -86,7 +85,16 @@ function createBot() {
 
       // Send the main menu
       await ctx.replyWithMarkdown(
-        "🎉 *Welcome to the Rats Kingdom Support Bot!* 🎉\n\nPlease choose an option from the menu below to get started:",
+        "*Welcome to the Rats Kingdom Support Bot!*\n\nThis bot is here to assist you with various tasks related to the Rats Kingdom platform. Please choose an option from the menu below to get started.\n\n⚠️ *Warning:* Spamming commands will result in temporary blocking. Please use the bot responsibly. 🛑\n\n" +
+        "Here are the available commands:\n\n" +
+        "1. 🐀 *Rats Kingdom - Introduction*: Learn about the Rats Kingdom and its features.\n\n" +
+        "2. 🤌 *Get My Referral Link*: Generate and get your referral link to share with others.\n\n" +
+        "3. 🔍 *Profile Verification Issue*: Report any issues with your profile verification by uploading a screenshot.\n\n" +
+        "4. 📢 *Updates*: Get the latest updates and announcements from the Rats Kingdom.\n\n" +
+        "5. 💬 *Feedback*: Provide your valuable feedback to help us improve the platform.\n\n" +
+        "6. 🎫 *Raise a Ticket*: Raise a support ticket by providing details and uploading relevant screenshots.\n\n\n\n" +
+        "⚠️ *Rate Limiting*: To prevent spamming, we have implemented rate limiting. If you send commands too quickly, you may be temporarily blocked. Please wait for the specified cooldown period before trying again.\n\n\n\n" +
+        "⚠️ *Command Limit*: You can give only *FIVE COMMANDS*. After that, You will need to start from the beginning by typing ---> /start",
         mainMenu
       );
     } catch (error) {
@@ -97,69 +105,170 @@ function createBot() {
 
   // Command: Updates
   bot.hears("📢 Updates", async (ctx) => {
+    // The image URL or file path
+    const image = './public/images/rat.jpg'; // Replace with your image URL or local file path
 
-    const message = `🚨 FINAL & BIGGEST CHANCE: Earn 1,00,000 $RATS by Inviting 5 Friends! 🚨
-    
-  As we’ve reached an incredible 8 Million user milestone, it’s time for the biggest opportunity yet for everyone! Many of you have been requesting another chance to earn more $RATS, especially those who missed our first "Invite 5 Friends" task. 
-    
-  🔥 Special Task: Invite 5 more friends to Rats Kingdom
-  🎁 Reward: 100,000 $RATS
-  ⏰ Task Duration: 21 Days
-    
-  🎯 Act fast—this is your LAST and BIGGEST opportunity to boost your $RATS balance before the SNAPSHOT! 🐀👑`;
-    ctx.replyWithMarkdown(message);
+    // The message text
+    const message = "🚨 *1️⃣1️⃣ MILLION RATS USERS* 🚨\n\n💫 *Massive Congrats, Fam* 🔡 🐀\n\n✅ *Verify your profile NOW* to enjoy instant withdrawals and seamless rewards 💰\n\n⚡ *NEW Task Alert!* Complete them all and supercharge your $RATS earnings\n\n🚩 *Don’t forget to complete the compulsory tasks for eligibility* 💯\n\n⏰ *Mark your calendars* — *2nd Snapshot on January 10th!* Don’t miss the golden opportunity 🗓\n\nLet’s continue building this unstoppable community & conquer new heights 🚀\n\n⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️";
+
+    // Send the image with the message as a caption
+    await ctx.replyWithPhoto(
+      { source: image  }, // This can also be a local file path
+      { caption: message, parse_mode: "Markdown" }
+    );
   });
+
 
   // Command: Rats Kingdom Introduction
   bot.hears("🐀 Rats Kingdom - Introduction", async (ctx) => {
-    ctx.replyWithMarkdown(`
-  🐀 *Rats Kingdom - Introduction* 🐀
+    try {
+      const userId = ctx.chat.id;
+      const cooldown = 2000; // 2 seconds cooldown
 
-  Welcome to the **Rats Kingdom**! 🎉
+      // Check if the user is rate-limited or blocked
+      const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
 
-  Rats Kingdom is a community-driven cryptocurrency project that has launched an exciting airdrop campaign. 🚀 The amount of $RATS tokens you receive in the airdrop can vary depending on your active participation in completing quests and inviting other users to the platform. 👫👬👭
+      if (blocked) {
+        if (notify) {
+          // Notify the user only if required
+          await ctx.replyWithMarkdown(
+            `🚫 *You have been temporarily blocked for spamming.* 🚫\n\n⏳ Please wait *${secondsRemaining} seconds* before sending commands.\n\n🔄 _You can start over by typing_ --/start-- _after the cooldown period._`,
+            rateLimitedMenu
+          );
+        }
+        return; // Stop further execution
+      }
 
-  The $RATS tokens can be used for various purposes within the Rats Kingdom ecosystem, such as:
-  - 🏦 Staking
-  - 💱 Trading
-  - 🗳️ Participating in governance decisions
+      if (rateLimited) {
+        // Optionally notify rate-limited users
+        await ctx.replyWithMarkdown("🚫 *You're sending messages too quickly!* 🚫\n\n⏳ *Please wait a moment before trying again.* 🙏");
+        return;
+      }
 
-  Join us and be a part of this amazing journey! 🌟
-  `);
+      const Links = {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "Open App", url: "http://t.me/RatsKingdom\_Bot/join?startapp=1375311862" },
+            ],
+            [
+              { text: "Join Telegram", url: "https://t.me/The_RatsKingdom" },
+            ],
+            [
+              { text: "Follow X", url: "https://x.com/The_RatsKingdom" },
+            ],
+            [
+              { text: "Subscribe YouTube", url: "https://youtube.com/@the_ratskingdom?feature=shared" },
+            ],
+          ],
+        },
+      };
+
+      await ctx.replyWithMarkdown(`
+🐀 *Welcome to #RATS Kingdom – The Reign of Community-Driven Innovation* 🐀
+
+Rats Kingdom is revolutionizing the crypto space with community-driven innovation and a vision for long-term growth. Integrated with Telegram, we’re building a thriving ecosystem with DApps, Web2 platforms, and an upcoming centralized exchange (CEX).
+
+⚡️ *Key Achievements & Milestones:*
+
+💫 10 Million+ Users – A united family in less than 3 months
+
+💵 Massive Airdrop Incoming – Snapshot is near, and $RATS tokens will be distributed soon!
+
+⭐️ Exclusive Events – Earn more $RATS by participating in exciting tasks and challenges.
+
+🔒 Enhanced Security – Fairness and transparency in every step of your journey.
+
+🎯 Don’t Miss Out! Join now, engage in the final events, and secure your spot in the biggest community-driven revolution in crypto!
+
+👀 *Explore the Ecosystem:*
+      `, Links);
+    } catch (error) {
+      console.error(`Error in bot.hears (User ID: ${ctx.chat.id}):`, error);
+      await ctx.replyWithMarkdown("⚠️ *An error occurred while processing your request. Please try again later.* ⚠️");
+    }
   });
 
   // Command: Get My Referral Link
   bot.hears("🤌 Get My referral link", async (ctx) => {
-    const chatId = ctx.chat?.id;
-    if (!chatId) {
-      return ctx.replyWithMarkdown(
-        "🚫 *Oops!* 🚫\n\n😔 *Could not retrieve your referral link. Please try again.* 🔄"
+    try {
+      const userId = ctx.chat.id;
+      const cooldown = 2000; // 2 seconds cooldown
+
+      // Check if the user is rate-limited or blocked
+      const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
+
+      if (blocked) {
+        if (notify) {
+          // Notify the user only if required
+          await ctx.replyWithMarkdown(
+            `🚫 *You have been temporarily blocked for spamming.* 🚫\n\n⏳ Please wait *${secondsRemaining} seconds* before sending commands.\n\n🔄 _You can start over by typing_ --/start-- _after the cooldown period._`,
+            rateLimitedMenu
+          );
+        }
+        return; // Stop further execution
+      }
+
+      if (rateLimited) {
+        // Optionally notify rate-limited users
+        await ctx.replyWithMarkdown("🚫 *You're sending messages too quickly!* 🚫\n\n⏳ *Please wait a moment before trying again.* 🙏");
+        return;
+      }
+
+      const referralLink = `http://t.me/RatsKingdom_Bot/join?startapp=${userId}`;
+
+      // Escape special characters in MarkdownV2
+      const escapedReferralLink = referralLink.replace(/\_/g, "\\_");
+
+      // Send the referral link to the user
+      await ctx.replyWithMarkdown(
+        `🎉 *Your Referral Link is Ready!* 🎉\n\n🔗 *Tap to copy:*\n\n \`${escapedReferralLink}\` \n\n🚀 *Share this link and earn rewards!* 🌟`
       );
+    } catch (error) {
+      console.error(`Error in bot.hears (User ID: ${ctx.chat.id}):`, error);
+      await ctx.replyWithMarkdown("⚠️ *An error occurred while processing your request. Please try again later.* ⚠️");
     }
-
-    const referralLink = `http://t.me/RatsKingdom_Bot/join?startapp=${chatId}`;
-
-    // Escape special characters in MarkdownV2
-    const escapedReferralLink = referralLink.replace(/\_/g, "\\_");
-    
-    // Send the referral link to the user
-    await ctx.replyWithMarkdown(
-      `🎉 *Your Referral Link is Ready!* 🎉\n\n🔗 *Tap to copy:*\n\n \`${escapedReferralLink}\` \n\n🚀 *Share this link and earn rewards!* 🌟`
-    );
-    
-  });    
+  });
 
   // Command: Raise a Ticket
   bot.hears("🎫 Raise a Ticket", async (ctx) => {
-    let TicketId = Math.floor(100000 + Math.random() * 900000);
-    await UserStateModel.findOneAndUpdate(
-      { userId: ctx.chat.id },
-      { step: "awaiting_issue_screenshot", photoUrls: [] },
-      { upsert: true }
-    );
-    await ctx.replyWithMarkdown(
-      `🎫 *Ticket ID: ${TicketId}*\n\n📸 Please upload a screenshot or photo related to your issue. If you don't have any image, please type the \`/skip\` command.`
-    );
+    try {
+      const userId = ctx.chat.id;
+      const cooldown = 2000; // 2 seconds cooldown
+
+      // Check if the user is rate-limited or blocked
+      const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
+
+      if (blocked) {
+        if (notify) {
+          // Notify the user only if required
+          await ctx.replyWithMarkdown(
+            `🚫 *You have been temporarily blocked for spamming.* 🚫\n\n⏳ Please wait *${secondsRemaining} seconds* before sending commands.\n\n🔄 _You can start over by typing_ --/start-- _after the cooldown period._`,
+            rateLimitedMenu
+          );
+        }
+        return; // Stop further execution
+      }
+
+      if (rateLimited) {
+        // Optionally notify rate-limited users
+        await ctx.replyWithMarkdown("🚫 *You're sending messages too quickly!* 🚫\n\n⏳ *Please wait a moment before trying again.* 🙏");
+        return;
+      }
+
+      let TicketId = Math.floor(100000 + Math.random() * 900000);
+      await UserStateModel.findOneAndUpdate(
+        { userId: ctx.chat.id },
+        { step: "awaiting_issue_screenshot", photoUrls: [] },
+        { upsert: true }
+      );
+      await ctx.replyWithMarkdown(
+        `🎫 *Ticket ID: ${TicketId}*\n\n📸 Please upload a screenshot or photo related to your issue. If you don't have any image, please type the \`/skip\` command.`
+      );
+    } catch (error) {
+      console.error(`Error in bot.hears (User ID: ${ctx.chat.id}):`, error);
+      await ctx.replyWithMarkdown("⚠️ *An error occurred while processing your request. Please try again later.* ⚠️");
+    }
   });
 
   bot.command("skip", async (ctx) => {
@@ -175,26 +284,82 @@ function createBot() {
 
   // Command: "Profile Verification Issue"
   bot.hears("🔍 Profile Verification Issue", async (ctx) => {
-    await UserStateModel.findOneAndUpdate(
-      { userId: ctx.chat.id },
-      { step: "awaiting_profile_screenshot", photoUrls: [] },
-      { upsert: true }
-    );
-    await ctx.replyWithMarkdown(
-      "📸 *Profile Verification Issue* 📸\n\nPlease upload a screenshot of your profile page showing the verification issue. 📝"
-    );
+    try {
+      const userId = ctx.chat.id;
+      const cooldown = 2000; // 2 seconds cooldown
+
+      // Check if the user is rate-limited or blocked
+      const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
+
+      if (blocked) {
+        if (notify) {
+          // Notify the user only if required
+          await ctx.replyWithMarkdown(
+            `🚫 *You have been temporarily blocked for spamming.* 🚫\n\n⏳ Please wait *${secondsRemaining} seconds* before sending commands.\n\n🔄 _You can start over by typing_ --/start-- _after the cooldown period._`,
+            rateLimitedMenu
+          );
+        }
+        return; // Stop further execution
+      }
+
+      if (rateLimited) {
+        // Optionally notify rate-limited users
+        await ctx.replyWithMarkdown("🚫 *You're sending messages too quickly!* 🚫\n\n⏳ *Please wait a moment before trying again.* 🙏");
+        return;
+      }
+
+      await UserStateModel.findOneAndUpdate(
+        { userId: ctx.chat.id },
+        { step: "awaiting_profile_screenshot", photoUrls: [] },
+        { upsert: true }
+      );
+      await ctx.replyWithMarkdown(
+        "📸 *Profile Verification Issue* 📸\n\nPlease upload a screenshot of your profile page showing the verification issue. 📝"
+      );
+    } catch (error) {
+      console.error(`Error in bot.hears (User ID: ${ctx.chat.id}):`, error);
+      await ctx.replyWithMarkdown("⚠️ *An error occurred while processing your request. Please try again later.* ⚠️");
+    }
   });
 
   // Command: Feedback
   bot.hears("💬 Feedback", async (ctx) => {
-    await UserStateModel.findOneAndUpdate(
-      { userId: ctx.chat.id },
-      { step: "feedback", photoUrls: [] },
-      { upsert: true }
-    );
-    await ctx.replyWithMarkdown(
-      "📝 *We Value Your Feedback!* 📝\n\nPlease provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us and helps us improve! 🌟"
-    );
+    try {
+      const userId = ctx.chat.id;
+      const cooldown = 2000; // 2 seconds cooldown
+
+      // Check if the user is rate-limited or blocked
+      const { blocked, rateLimited, notify, secondsRemaining } = await isRateLimited(userId, cooldown, ctx);
+
+      if (blocked) {
+        if (notify) {
+          // Notify the user only if required
+          await ctx.replyWithMarkdown(
+            `🚫 *You have been temporarily blocked for spamming.* 🚫\n\n⏳ Please wait *${secondsRemaining} seconds* before sending commands.\n\n🔄 _You can start over by typing_ --/start-- _after the cooldown period._`,
+            rateLimitedMenu
+          );
+        }
+        return; // Stop further execution
+      }
+
+      if (rateLimited) {
+        // Optionally notify rate-limited users
+        await ctx.replyWithMarkdown("🚫 *You're sending messages too quickly!* 🚫\n\n⏳ *Please wait a moment before trying again.* 🙏");
+        return;
+      }
+
+      await UserStateModel.findOneAndUpdate(
+        { userId: ctx.chat.id },
+        { step: "feedback", photoUrls: [] },
+        { upsert: true }
+      );
+      await ctx.replyWithMarkdown(
+        "📝 *We Value Your Feedback!* 📝\n\nPlease provide your feedback on the Rats Kingdom platform. Your feedback is valuable to us and helps us improve! 🌟"
+      );
+    } catch (error) {
+      console.error(`Error in bot.hears (User ID: ${ctx.chat.id}):`, error);
+      await ctx.replyWithMarkdown("⚠️ *An error occurred while processing your request. Please try again later.* ⚠️");
+    }
   });
 
 
