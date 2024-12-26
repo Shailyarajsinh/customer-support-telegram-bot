@@ -5,7 +5,7 @@ import { cloudinary, UploadApiResponse } from "./cloudinary";
 import { ImageModel } from "./models/image.model";
 import { BOT_TOKEN } from "./config";
 import { Buffer } from "buffer";
-import { TicketModel } from "./models/Tickit.model";
+import { TicketModel } from "./models/Ticket.model";
 import { UserStateModel } from "./models/Userstate.model";
 import { isRateLimited } from "./rateLimiter";
 

@@ -1,12 +1,15 @@
 import mongoose from "mongoose";
 
-const ProfileVarification = new mongoose.Schema({
-  UserId: String,
-  Profile_Image: { type: String, default: "No Image" },
-  TonTransactionImage: { type: String, default: "No Image" },
-  TonTransactionHash: String,
-  UserFeedback: { type: String, default: "No Feedback" },
-},
-  { timestamps: true });
+const profileVerificationSchema = new mongoose.Schema(
+  {
+    userId: { type: Number , required: true},
+    profileImage: { type: String, default: "No Image" },
+    tonTransactionImage: { type: String, default: "No Image" },
+    tonTransactionHash: String,
+    userFeedback: { type: String, default: "No Feedback" },
+    createdAt: { type: Date, default: Date.now, index: { expireAfterSeconds: 60 * 60 * 24 * 7 } },
+  },
+  { timestamps: true }
+);
 
-export const ImageModel = mongoose.model("Support_bot", ProfileVarification);
+export const ImageModel = mongoose.model("profile_verification", profileVerificationSchema);
