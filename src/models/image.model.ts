@@ -7,7 +7,7 @@ const profileVerificationSchema = new mongoose.Schema(
     tonTransactionImage: { type: String, default: "No Image" },
     tonTransactionHash: String,
     userFeedback: { type: String, default: "No Feedback" },
-    createdAt: { type: Date, default: Date.now, index: { expireAfterSeconds: 60 * 60 * 24 * 7 } },
+    // createdAt: { type: Date, default: Date.now, index: { expireAfterSeconds: 60 * 60 * 24 * 7 } },
   },
   { timestamps: true }
 );

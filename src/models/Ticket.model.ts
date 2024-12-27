@@ -7,7 +7,7 @@ const ticketSchema = new mongoose.Schema({
   ticketId: {type: Number, required: true},
   issueDetails: { type: String, default: "No details" },
   issueImage: { type: String, default: "No image" },
-  createdAt: { type: Date, default: Date.now, index: { expireAfterSeconds: 60 * 60 * 24 * 7 } },
+  // createdAt: { type: Date, default: Date.now, index: { expireAfterSeconds: 60 * 60 * 24 * 7 } },
 },
 { timestamps: true,});
 
