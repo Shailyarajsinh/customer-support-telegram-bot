@@ -428,11 +428,10 @@ Rats Kingdom is revolutionizing the crypto space with community-driven innovatio
           switch (state.step) {
             case "awaiting_profile_screenshot":
               savedDocument = await ImageModel.findOneAndUpdate(
-                { UserId: userId },
+                { userId: userId },
                 {
-                  UserId: userId,
-                  UserName: ctx.from?.username,
-                  Profile_Image: result.secure_url,
+                  userId: userId,
+                  profileImage: result.secure_url,
                 },
                 { upsert: true, new: true }
               );
@@ -445,9 +444,9 @@ Rats Kingdom is revolutionizing the crypto space with community-driven innovatio
 
             case "awaiting_ton_transaction_screenshot":
               savedDocument = await ImageModel.findOneAndUpdate(
-                { UserId: userId },
+                { userId: userId },
                 {
-                  TonTransactionImage: result.secure_url,
+                  tonTransactionImage: result.secure_url,
                 },
                 { new: true }
               );
@@ -461,11 +460,11 @@ Rats Kingdom is revolutionizing the crypto space with community-driven innovatio
             case "awaiting_issue_screenshot":
               const ticketId = Math.floor(100000 + Math.random() * 900000);
               savedDocument = await TicketModel.findOneAndUpdate(
-                { UserId: userId },
+                { userId: userId },
                 {
-                  UserId: userId,
-                  Issue_Image: result.secure_url,
-                  TicketId: ticketId,
+                  userId: userId,
+                  issueImage: result.secure_url,
+                  ticketId: ticketId,
                 },
                 { upsert: true, new: true }
               );
@@ -537,8 +536,8 @@ Rats Kingdom is revolutionizing the crypto space with community-driven innovatio
 
           // Update the TON hash in the database
           const savedDocument = await ImageModel.findOneAndUpdate(
-            { UserId: userId },
-            { TonTransactionHash: tonHash },
+            { userId: userId },
+            { tonTransactionHash: tonHash },
             { new: true }
           );
 
@@ -559,8 +558,8 @@ Rats Kingdom is revolutionizing the crypto space with community-driven innovatio
 
           // Save feedback to the database
           const savedDocument = await ImageModel.findOneAndUpdate(
-            { UserId: userId },
-            { UserFeedback: feedback },
+            { userId: userId },
+            { userFeedback: feedback },
             { upsert: true, new: true }
           );
 
@@ -581,8 +580,8 @@ Rats Kingdom is revolutionizing the crypto space with community-driven innovatio
 
           // Update the issue details in the database
           const savedDocument = await TicketModel.findOneAndUpdate(
-            { UserId: userId },
-            { IssueDetails: issueDetails },
+            { userId: userId },
+            { issueDetails: issueDetails },
             { upsert: true, new: true }
           );
 
